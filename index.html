@@ -1453,12 +1453,10 @@ function sendMessageText(text) {
   var messages = chatHistory.slice(-20); // last 20 for context
 
   // Call Claude API
-  fetch('https://api.anthropic.com/v1/messages', {
+  fetch('https://toastid-ai-proxy.toastidtechllc.workers.dev/', {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-allow-browser': 'true'
+      'Content-Type': 'application/json'
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
