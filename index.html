@@ -1453,7 +1453,7 @@ function sendMessageText(text) {
   var messages = chatHistory.slice(-20); // last 20 for context
 
   // Call Claude API
-  fetch('https://muddy-violet-2a0d.toastidtechllc.workers.dev/',
+  fetch('https://muddy-violet-2a0d.toastidtechllc.workers.dev/', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
