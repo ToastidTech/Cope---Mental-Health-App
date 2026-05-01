@@ -1328,7 +1328,7 @@ function initChat() {
   var container = document.getElementById('chatMessages');
 
   if (chatHistory.length === 0) {
-    renderMessage('ai', "Hey, I\'m Cope AI. 💜 I\'m here specifically to support your mental health and emotional wellness — whether you\'re navigating anxiety, grief, stress, low moods, or just need someone to help you breathe through a hard moment.\n\nThis is a safe space. You can share as much or as little as you\'d like.\n\nWhat\'s on your heart right now?", true);
+    renderMessage('ai', "Hey, I'm Cope AI. 💜 I'm here to support your mental health and emotional wellness.\n\nThis is a safe space. Share as much or as little as you'd like.\n\nWhat's on your heart right now?", true);
     showQuickReplies(INITIAL_QUICK_REPLIES);
   } else {
     container.innerHTML = '';
@@ -1465,7 +1465,7 @@ function sendMessageText(text) {
     body: JSON.stringify({
       model: 'claude-3-5-haiku-20241022',
       max_tokens: 1000,
-      system: SYSTEM_PROMPT,
+      system: SYSTEM_PROMPT, 
       messages: messages
     })
   })
