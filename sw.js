@@ -1,5 +1,5 @@
-const CACHE = 'cope-v29';
-const ASSETS = ['./','./index.html','./manifest.json','./lead-capture.js','./logo-192.png','./logo-512.png','./splash-logo.png'];
+const CACHE = 'cope-v30';
+const ASSETS = ['./','./index.html','./manifest.json','./lead-capture.js','./access-gate.js','./logo-192.png','./logo-512.png','./splash-logo.png'];
 
 const CHAT_CONTRAST = `<style id="cope-chat-contrast">
 .bottom-nav .nav-btn[onclick*="talk"] { -webkit-appearance:none !important; appearance:none !important; background:rgba(184,159,216,0.10) !important; border:1px solid rgba(184,159,216,0.32) !important; color:#d4bff5 !important; box-shadow:0 0 14px rgba(184,159,216,0.10) !important; }
@@ -8,38 +8,17 @@ const CHAT_CONTRAST = `<style id="cope-chat-contrast">
 .bottom-nav .nav-btn[onclick*="talk"] .nav-label { color:#c7b7df !important; }
 </style>`;
 
-const OPEN_WEEK_FIX = `<script id="cope-open-week-fix">
-(function(){
-  function isOpenWeek(){var now=new Date();return now>=new Date('2026-09-06T00:00:00-05:00')&&now<new Date('2026-09-14T00:00:00-05:00');}
-  function apply(){
-    if(!isOpenWeek())return;
-    window.hasAccess=function(){return true;};
-    window.openPaywall=function(){};
-    document.querySelectorAll('.quick-card.locked').forEach(function(c){c.classList.remove('locked');});
-    document.querySelectorAll('[onclick]').forEach(function(el){
-      var click=el.getAttribute('onclick')||'';
-      var m=click.match(/hasAccess\(\)\s*\?\s*goTo\((['\"])([^'\"]+)\1\)\s*:\s*openPaywall\(\)/);
-      if(m)el.setAttribute('onclick','goTo(\''+m[2]+'\')');
-    });
-  }
-  function start(){apply();setInterval(apply,250);}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
-})();
-</script>`;
-
 function enhanceHtml(response) {
   if (!response || !response.ok) return response;
   const type=response.headers.get('content-type')||'';
   if (!type.includes('text/html')) return response;
   return response.text().then(html=>{
-    if(new Date()>=new Date('2026-09-06T00:00:00-05:00')&&new Date()<new Date('2026-09-14T00:00:00-05:00')){
-      html=html.replace(/class="quick-card locked"/g,'class="quick-card"');
-      html=html.replace(/onclick="hasAccess\(\)\s*\?\s*goTo\((['\"])([^'\"]+)\1\)\s*:\s*openPaywall\(\)"/g,'onclick="goTo(\'$2\')"');
-      html=html.replace(/<head([^>]*)>/i,'<head$1><style id="cope-open-week-lock-css">.quick-card.locked::after{content:none!important}.quick-card.locked{opacity:1!important}</style>');
-    }
+    html=html.replace(/<script id="cope-open-week-fix">[\s\S]*?<\/script>/g,'');
+    html=html.replace(/<style id="cope-open-week-lock-css">[\s\S]*?<\/style>/g,'');
+    html=html.replace(/<script[^>]+src=["'][^"']*labor-day-promo\.js[^"']*["'][^>]*><\/script>/gi,'');
     if(!html.includes('id="cope-chat-contrast"'))html=html.replace('</head',`${CHAT_CONTRAST}\n</head`);
-    if(!html.includes('cope-open-week-fix'))html=html.replace('</body',`${OPEN_WEEK_FIX}\n</body`);
-    if(!html.includes('lead-capture.js'))html=html.replace('</body','  <script src="./lead-capture.js?v=3" defer></script>\n</body');
+    if(!html.includes('access-gate.js'))html=html.replace('</body','  <script src="./access-gate.js?v=1" defer></script>\n</body');
+    if(!html.includes('lead-capture.js'))html=html.replace('</body','  <script src="./lead-capture.js?v=4" defer></script>\n</body');
     return new Response(html,{status:response.status,statusText:response.statusText,headers:response.headers});
   });
 }
