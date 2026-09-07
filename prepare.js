@@ -9,7 +9,7 @@ html = html.replace(
 );
 
 html = html.replace(
-  /function callCopeAI\(userMessage, onSuccess, onError\) \{[\s\S]*?\n  \}\n  \n  \/\/ Enter key to send/,
+  /function callCopeAI\(userMessage, onSuccess, onError\) \{[\s\S]*?\n  \}\n  \s*\/\/ Enter key to send/,
   `function callCopeAI(userMessage, onSuccess, onError) {
     var messages = [
       { role: 'user', content: userMessage }
@@ -56,17 +56,11 @@ html = html.replace(
   // Enter key to send`
 );
 
-// Keep the PWA service-worker path valid both on GitHub Pages (/Cope/)
-// and when the app is served from the AWS container root (/).
 html = html.replace(
   "navigator.serviceWorker.register('/Cope/sw.js')",
   "navigator.serviceWorker.register('./sw.js')"
 );
 
-// Improve contrast for the Cope AI/Talk screen and bottom navigation.
-// Explicitly style the Talk navigation button itself because the base
-// .nav-btn uses background:none and can otherwise inherit a black/default
-// appearance on some mobile browsers.
 const chatStyles = `<style id="cope-chat-contrast">
 #screen-talk h2 { color: var(--lav-bright) !important; text-shadow: 0 0 12px rgba(212,191,245,0.18); }
 #screen-talk input, #screen-talk textarea { color: var(--white) !important; background: var(--card) !important; border-color: rgba(184,159,216,0.28) !important; }
@@ -84,24 +78,24 @@ const chatStyles = `<style id="cope-chat-contrast">
 .bottom-nav .nav-btn[onclick*="talk"] .nav-label { color: #c7b7df !important; }
 </style>`;
 
-// Replace an existing generated block so future builds actually receive
-// this fix even when index.html already contains the old style block.
 if (html.includes('id="cope-chat-contrast"')) {
   html = html.replace(/<style id="cope-chat-contrast">[\s\S]*?<\/style>/, chatStyles);
 } else {
   html = html.replace('</head>', `${chatStyles}\n</head>`);
 }
 
-// Add the optional, consent-based Toastid Tech lead capture to the production build.
-const leadScript = '<script src="./lead-capture.js" defer></script>';
+const accessScript = '<script src="./access-gate.js?v=1" defer></script>';
+if (!html.includes('access-gate.js')) {
+  html = html.replace('</body>', `  ${accessScript}\n</body>`);
+}
+
+const leadScript = '<script src="./lead-capture.js?v=4" defer></script>';
 if (!html.includes('lead-capture.js')) {
   html = html.replace('</body>', `  ${leadScript}\n</body>`);
 }
 
 fs.writeFileSync(file, html);
 
-// Make the manifest portable between the GitHub Pages subpath and the
-// AWS container root. Relative paths resolve against the manifest location.
 const manifestFile = "manifest.json";
 let manifest = JSON.parse(fs.readFileSync(manifestFile, "utf8"));
 manifest.start_url = "./";
@@ -115,4 +109,4 @@ manifest.icons = (manifest.icons || []).map(icon => ({
 }));
 fs.writeFileSync(manifestFile, JSON.stringify(manifest, null, 2) + "\n");
 
-console.log("Cope frontend prepared for AWS /api/cope-ai");
+console.log("Cope frontend prepared for AWS /api/cope-ai and seven-day promo access");
