@@ -1,28 +1,29 @@
 (() => {
   'use strict';
 
-  // Versioned keys ensure users who tested an older build get a fresh prompt.
-  const INTRO_KEY = 'copeLeadIntroShown_v3';
-  const EXIT_KEY = 'copeLeadExitShown_v3';
+  const INTRO_KEY = 'copeLeadIntroShown_v4';
+  const EXIT_KEY = 'copeLeadExitShown_v4';
   const ENDPOINT = './api/lead';
+  const DEVICE_KEY = 'copePromoDeviceId_v1';
+
+  function getDeviceId() {
+    let id = localStorage.getItem(DEVICE_KEY);
+    if (!id) {
+      id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'cope-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+      localStorage.setItem(DEVICE_KEY, id);
+    }
+    return id;
+  }
 
   function injectStyles() {
     if (document.getElementById('copeLeadStyles')) return;
     const style = document.createElement('style');
     style.id = 'copeLeadStyles';
     style.textContent = `
-      /* Cope Talk button: explicit styling so it cannot fall back to browser-black. */
-      .bottom-nav .nav-btn[onclick*="goTo('talk')"],
-      .bottom-nav .nav-btn[onclick*="talk"] { background:rgba(184,159,216,.10)!important; border:1px solid rgba(184,159,216,.32)!important; color:#d4bff5!important; box-shadow:0 0 14px rgba(184,159,216,.10); }
-      .bottom-nav .nav-btn[onclick*="goTo('talk')"] .nav-icon,
-      .bottom-nav .nav-btn[onclick*="talk"] .nav-icon { color:#d4bff5!important; filter:drop-shadow(0 0 6px rgba(184,159,216,.55)); }
-      .bottom-nav .nav-btn[onclick*="goTo('talk')"] .nav-label,
-      .bottom-nav .nav-btn[onclick*="talk"] .nav-label { color:#c7b7df!important; }
-      .bottom-nav .nav-btn[onclick*="goTo('talk')"]:hover,
-      .bottom-nav .nav-btn[onclick*="goTo('talk')"]:focus,
-      .bottom-nav .nav-btn[onclick*="goTo('talk')"]:active,
-      .bottom-nav .nav-btn[onclick*="talk"].active { background:rgba(184,159,216,.18)!important; border-color:rgba(184,159,216,.50)!important; color:#d4bff5!important; }
-
+      .bottom-nav .nav-btn[onclick*="goTo('talk')"],.bottom-nav .nav-btn[onclick*="talk"] { background:rgba(184,159,216,.10)!important; border:1px solid rgba(184,159,216,.32)!important; color:#d4bff5!important; box-shadow:0 0 14px rgba(184,159,216,.10); }
+      .bottom-nav .nav-btn[onclick*="goTo('talk')"] .nav-icon,.bottom-nav .nav-btn[onclick*="talk"] .nav-icon { color:#d4bff5!important; filter:drop-shadow(0 0 6px rgba(184,159,216,.55)); }
+      .bottom-nav .nav-btn[onclick*="goTo('talk')"] .nav-label,.bottom-nav .nav-btn[onclick*="talk"] .nav-label { color:#c7b7df!important; }
+      .bottom-nav .nav-btn[onclick*="goTo('talk')"]:hover,.bottom-nav .nav-btn[onclick*="goTo('talk')"]:focus,.bottom-nav .nav-btn[onclick*="goTo('talk')"]:active,.bottom-nav .nav-btn[onclick*="talk"].active { background:rgba(184,159,216,.18)!important; border-color:rgba(184,159,216,.50)!important; color:#d4bff5!important; }
       #copeLeadOverlay { position:fixed; inset:0; display:none; align-items:flex-end; justify-content:center; padding:16px; background:rgba(4,4,10,.84); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); z-index:9999; }
       #copeLeadOverlay.open { display:flex; }
       .cope-lead-card { width:min(100%,440px); max-height:calc(100dvh - 32px); overflow-y:auto; background:#10101e; border:1px solid rgba(184,159,216,.35); border-radius:24px; padding:22px; box-shadow:0 24px 80px rgba(0,0,0,.55); animation:copeLeadUp .25s ease-out; }
@@ -40,6 +41,10 @@
       .cope-lead-submit { background:#b89fd8; border:1px solid #b89fd8; color:#08080f; font-weight:600; }
       .cope-lead-submit:disabled { opacity:.6; cursor:wait; }
       .cope-lead-status { min-height:18px; margin-top:10px; font-size:.72rem; line-height:1.4; color:#7abfa0; }
+      .cope-promo-result { display:none; margin-top:14px; padding:14px; border:1px solid rgba(122,191,160,.28); border-radius:14px; background:rgba(122,191,160,.06); text-align:center; }
+      .cope-promo-result.open { display:block; }
+      .cope-promo-code { display:block; margin:7px 0 4px; color:#f0eeff; font-size:1.35rem; font-weight:600; letter-spacing:2px; }
+      .cope-promo-expiry { color:#9694ad; font-size:.7rem; }
       @media (min-width:700px) { #copeLeadOverlay { align-items:center; } }
     `;
     document.head.appendChild(style);
@@ -54,7 +59,7 @@
       <div class="cope-lead-card" role="dialog" aria-modal="true" aria-labelledby="copeLeadTitle">
         <div class="cope-lead-handle" aria-hidden="true"></div>
         <h2 id="copeLeadTitle">Welcome to Cope</h2>
-        <p id="copeLeadIntro">Before you begin, we'd love to stay in touch. Share your name and email with the Cope team. You can continue without sharing.</p>
+        <p id="copeLeadIntro">Share your name and email and we'll give you 7 days of free access to Cope, including CopeAI. No card required.</p>
         <form id="copeLeadForm" novalidate>
           <label for="copeLeadName">Name</label>
           <input id="copeLeadName" name="name" type="text" autocomplete="name" maxlength="120" required>
@@ -64,9 +69,14 @@
           <textarea id="copeLeadComment" name="comment" maxlength="2000" placeholder="Tell us what brought you to Cope..."></textarea>
           <div class="cope-lead-actions">
             <button type="button" class="cope-lead-skip" id="copeLeadSkip">Continue without sharing</button>
-            <button type="submit" class="cope-lead-submit" id="copeLeadSubmit">Enter Cope</button>
+            <button type="submit" class="cope-lead-submit" id="copeLeadSubmit">Get My 7 Days</button>
           </div>
           <div class="cope-lead-status" id="copeLeadStatus" aria-live="polite"></div>
+          <div class="cope-promo-result" id="copePromoResult" aria-live="polite">
+            <span>Your 7-day promo code</span>
+            <strong class="cope-promo-code" id="copePromoCode"></strong>
+            <span class="cope-promo-expiry" id="copePromoExpiry"></span>
+          </div>
         </form>
       </div>`;
     document.body.appendChild(overlay);
@@ -82,6 +92,7 @@
       const comment = form.elements.comment.value.trim();
       const status = document.getElementById('copeLeadStatus');
       const submit = document.getElementById('copeLeadSubmit');
+      const promoResult = document.getElementById('copePromoResult');
 
       if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         status.textContent = 'Please enter your name and a valid email.';
@@ -90,21 +101,33 @@
       }
 
       submit.disabled = true;
-      status.textContent = 'Saving…';
+      status.textContent = 'Saving your access…';
       status.style.color = '#9694ad';
       try {
         const response = await fetch(ENDPOINT, {
           method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, credentials:'same-origin',
-          body:JSON.stringify({name,email,comment})
+          body:JSON.stringify({name,email,comment,deviceId:getDeviceId()})
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || `Server error: ${response.status}`);
-        status.textContent = 'Thank you. 💜';
+
+        localStorage.setItem('copePromoAccess_v1','true');
+        localStorage.setItem('copePromoExpiresAt_v1', String(Number(data.expiresAt)));
+        if (typeof window.copeSetPromoAccess === 'function') window.copeSetPromoAccess(data.expiresAt);
+
+        document.getElementById('copePromoCode').textContent = data.promoCode || 'COPEFREE7';
+        const expiry = new Date(Number(data.expiresAt));
+        document.getElementById('copePromoExpiry').textContent = `Free access is active until ${expiry.toLocaleString([], {dateStyle:'medium', timeStyle:'short'})}.`;
+        promoResult.classList.add('open');
+        status.textContent = 'You’re in. Cope and CopeAI are unlocked for 7 days. 💜';
         status.style.color = '#7abfa0';
-        setTimeout(() => closePrompt(), 650);
+        submit.style.display = 'none';
+        document.getElementById('copeLeadSkip').textContent = 'Start Cope';
+        localStorage.setItem('copeLeadCaptured_v1','true');
+        setTimeout(() => closePrompt(), 1800);
       } catch (error) {
         console.error('Cope lead capture error:', error);
-        status.textContent = 'Could not send right now. Please try again.';
+        status.textContent = 'Could not activate the free week right now. Please try again.';
         status.style.color = '#c97a8a';
         submit.disabled = false;
       }
@@ -118,37 +141,48 @@
     overlay.setAttribute('aria-hidden','true');
   }
 
-  function showPrompt(mode) {
+  function showPrompt(mode, force) {
     const key = mode === 'intro' ? INTRO_KEY : EXIT_KEY;
-    if (sessionStorage.getItem(key)) return;
+    if (!force && sessionStorage.getItem(key)) return;
     const overlay = document.getElementById('copeLeadOverlay');
     if (!overlay || overlay.classList.contains('open')) return;
-    sessionStorage.setItem(key,'1');
+    if (!force) sessionStorage.setItem(key,'1');
+
     const title = document.getElementById('copeLeadTitle');
     const intro = document.getElementById('copeLeadIntro');
     const skip = document.getElementById('copeLeadSkip');
     const submit = document.getElementById('copeLeadSubmit');
-    if (mode === 'exit') {
-      title.textContent='Before you go';
-      intro.textContent="We'd love to hear from you. Leave your name, email, and anything you'd like to share with the Cope team.";
-      skip.textContent='Not now'; submit.textContent='Send';
-    } else {
-      title.textContent='Welcome to Cope';
-      intro.textContent="Before you begin, we'd love to stay in touch. Share your name and email with the Cope team. You can continue without sharing.";
-      skip.textContent='Continue without sharing'; submit.textContent='Enter Cope';
-    }
+    const promoResult = document.getElementById('copePromoResult');
+    const status = document.getElementById('copeLeadStatus');
+
+    title.textContent = mode === 'gate' ? 'Unlock 7 Free Days' : 'Welcome to Cope';
+    intro.textContent = mode === 'gate'
+      ? 'This feature is part of Cope Premium. Share your name and email and we\'ll unlock Cope + CopeAI for 7 days. No card required.'
+      : 'Share your name and email and we\'ll give you 7 days of free access to Cope, including CopeAI. No card required.';
+    skip.textContent = mode === 'gate' ? 'Not now' : 'Continue without sharing';
+    submit.textContent = 'Get My 7 Days';
+    submit.style.display = '';
+    submit.disabled = false;
+    promoResult.classList.remove('open');
+    status.textContent = '';
     document.getElementById('copeLeadForm').reset();
-    document.getElementById('copeLeadStatus').textContent='';
-    submit.disabled=false;
     overlay.classList.add('open');
     overlay.setAttribute('aria-hidden','false');
     setTimeout(() => document.getElementById('copeLeadName')?.focus(),50);
   }
 
+  window.copeShowLeadPrompt = function(mode) {
+    showPrompt(mode || 'gate', true);
+  };
+
   function init() {
     injectStyles();
     injectMarkup();
-    setTimeout(() => showPrompt('intro'), 900);
+    setTimeout(() => {
+      if (!localStorage.getItem('copePromoAccess_v1') || Number(localStorage.getItem('copePromoExpiresAt_v1') || 0) <= Date.now()) {
+        showPrompt('intro');
+      }
+    }, 900);
 
     document.addEventListener('mouseout', event => {
       if (event.clientY <= 4 && event.relatedTarget === null) showPrompt('exit');
