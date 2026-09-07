@@ -5,6 +5,7 @@
   const EXIT_KEY = 'copeLeadExitShown_v4';
   const ENDPOINT = './api/lead';
   const DEVICE_KEY = 'copePromoDeviceId_v1';
+  const PROMO_ISSUE_END_MS = Date.parse('2026-09-13T04:59:59.999Z');
 
   function getDeviceId() {
     let id = localStorage.getItem(DEVICE_KEY);
@@ -14,6 +15,8 @@
     }
     return id;
   }
+
+  function promoStillIssuing() { return Date.now() <= PROMO_ISSUE_END_MS; }
 
   function injectStyles() {
     if (document.getElementById('copeLeadStyles')) return;
@@ -59,7 +62,7 @@
       <div class="cope-lead-card" role="dialog" aria-modal="true" aria-labelledby="copeLeadTitle">
         <div class="cope-lead-handle" aria-hidden="true"></div>
         <h2 id="copeLeadTitle">Welcome to Cope</h2>
-        <p id="copeLeadIntro">Share your name and email and we'll give you 7 days of free access to Cope, including CopeAI. No card required.</p>
+        <p id="copeLeadIntro"></p>
         <form id="copeLeadForm" novalidate>
           <label for="copeLeadName">Name</label>
           <input id="copeLeadName" name="name" type="text" autocomplete="name" maxlength="120" required>
@@ -69,7 +72,7 @@
           <textarea id="copeLeadComment" name="comment" maxlength="2000" placeholder="Tell us what brought you to Cope..."></textarea>
           <div class="cope-lead-actions">
             <button type="button" class="cope-lead-skip" id="copeLeadSkip">Continue without sharing</button>
-            <button type="submit" class="cope-lead-submit" id="copeLeadSubmit">Get My 7 Days</button>
+            <button type="submit" class="cope-lead-submit" id="copeLeadSubmit"></button>
           </div>
           <div class="cope-lead-status" id="copeLeadStatus" aria-live="polite"></div>
           <div class="cope-promo-result" id="copePromoResult" aria-live="polite">
@@ -101,7 +104,7 @@
       }
 
       submit.disabled = true;
-      status.textContent = 'Saving your access…';
+      status.textContent = 'Saving your information…';
       status.style.color = '#9694ad';
       try {
         const response = await fetch(ENDPOINT, {
@@ -111,23 +114,30 @@
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || `Server error: ${response.status}`);
 
-        localStorage.setItem('copePromoAccess_v1','true');
-        localStorage.setItem('copePromoExpiresAt_v1', String(Number(data.expiresAt)));
-        if (typeof window.copeSetPromoAccess === 'function') window.copeSetPromoAccess(data.expiresAt);
-
-        document.getElementById('copePromoCode').textContent = data.promoCode || 'COPEFREE7';
-        const expiry = new Date(Number(data.expiresAt));
-        document.getElementById('copePromoExpiry').textContent = `Free access is active until ${expiry.toLocaleString([], {dateStyle:'medium', timeStyle:'short'})}.`;
-        promoResult.classList.add('open');
-        status.textContent = 'You’re in. Cope and CopeAI are unlocked for 7 days. 💜';
-        status.style.color = '#7abfa0';
-        submit.style.display = 'none';
-        document.getElementById('copeLeadSkip').textContent = 'Start Cope';
-        localStorage.setItem('copeLeadCaptured_v1','true');
-        setTimeout(() => closePrompt(), 1800);
+        if (data.promoAvailable && data.expiresAt) {
+          localStorage.setItem('copePromoAccess_v1','true');
+          localStorage.setItem('copePromoExpiresAt_v1', String(Number(data.expiresAt)));
+          if (typeof window.copeSetPromoAccess === 'function') window.copeSetPromoAccess(data.expiresAt);
+          document.getElementById('copePromoCode').textContent = data.promoCode || 'COPEFREE7';
+          const expiry = new Date(Number(data.expiresAt));
+          document.getElementById('copePromoExpiry').textContent = `Free access is active until ${expiry.toLocaleString([], {dateStyle:'medium', timeStyle:'short'})}.`;
+          promoResult.classList.add('open');
+          status.textContent = 'You’re in. Cope and CopeAI are unlocked for 7 days. 💜';
+          status.style.color = '#7abfa0';
+          submit.style.display = 'none';
+          document.getElementById('copeLeadSkip').textContent = 'Start Cope';
+          localStorage.setItem('copeLeadCaptured_v1','true');
+          setTimeout(() => closePrompt(), 1800);
+        } else {
+          status.textContent = 'Thanks. Your information has been saved. The Labor Day free-week promotion has ended.';
+          status.style.color = '#9694ad';
+          submit.style.display = 'none';
+          document.getElementById('copeLeadSkip').textContent = 'Continue to Cope';
+          localStorage.setItem('copeLeadCaptured_v1','true');
+        }
       } catch (error) {
         console.error('Cope lead capture error:', error);
-        status.textContent = 'Could not activate the free week right now. Please try again.';
+        status.textContent = 'Could not save your information right now. Please try again.';
         status.style.color = '#c97a8a';
         submit.disabled = false;
       }
@@ -154,13 +164,14 @@
     const submit = document.getElementById('copeLeadSubmit');
     const promoResult = document.getElementById('copePromoResult');
     const status = document.getElementById('copeLeadStatus');
+    const promoActive = promoStillIssuing();
 
-    title.textContent = mode === 'gate' ? 'Unlock 7 Free Days' : 'Welcome to Cope';
+    title.textContent = mode === 'gate' ? (promoActive ? 'Unlock 7 Free Days' : 'Stay Connected with Cope') : 'Welcome to Cope';
     intro.textContent = mode === 'gate'
-      ? 'This feature is part of Cope Premium. Share your name and email and we\'ll unlock Cope + CopeAI for 7 days. No card required.'
-      : 'Share your name and email and we\'ll give you 7 days of free access to Cope, including CopeAI. No card required.';
+      ? (promoActive ? 'This feature is part of Cope Premium. Share your name and email and we\'ll unlock Cope + CopeAI for 7 days. No card required. Labor Day special ends Saturday.' : 'Share your name and email to stay connected with Cope. The Labor Day free-week promotion has ended.')
+      : (promoActive ? 'Share your name and email and we\'ll give you 7 days of free access to Cope, including CopeAI. No card required. Labor Day special ends Saturday.' : 'Share your name and email to stay connected with Cope. The Labor Day free-week promotion has ended.');
     skip.textContent = mode === 'gate' ? 'Not now' : 'Continue without sharing';
-    submit.textContent = 'Get My 7 Days';
+    submit.textContent = promoActive ? 'Get My 7 Days' : 'Save My Information';
     submit.style.display = '';
     submit.disabled = false;
     promoResult.classList.remove('open');
@@ -171,23 +182,15 @@
     setTimeout(() => document.getElementById('copeLeadName')?.focus(),50);
   }
 
-  window.copeShowLeadPrompt = function(mode) {
-    showPrompt(mode || 'gate', true);
-  };
+  window.copeShowLeadPrompt = function(mode) { showPrompt(mode || 'gate', true); };
 
   function init() {
     injectStyles();
     injectMarkup();
     setTimeout(() => {
-      if (!localStorage.getItem('copePromoAccess_v1') || Number(localStorage.getItem('copePromoExpiresAt_v1') || 0) <= Date.now()) {
-        showPrompt('intro');
-      }
+      if (!localStorage.getItem('copePromoAccess_v1') || Number(localStorage.getItem('copePromoExpiresAt_v1') || 0) <= Date.now()) showPrompt('intro');
     }, 900);
-
-    document.addEventListener('mouseout', event => {
-      if (event.clientY <= 4 && event.relatedTarget === null) showPrompt('exit');
-    });
-
+    document.addEventListener('mouseout', event => { if (event.clientY <= 4 && event.relatedTarget === null) showPrompt('exit'); });
     let wasHidden = false;
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') wasHidden = true;
