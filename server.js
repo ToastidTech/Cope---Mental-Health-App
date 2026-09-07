@@ -8,6 +8,9 @@ const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const RATE_LIMIT_MAX = 20;
 const requestLog = new Map();
 const LEADS_FILE = process.env.COPE_LEADS_FILE || path.join(__dirname, "data", "leads.jsonl");
+const PROMOS_FILE = process.env.COPE_PROMOS_FILE || path.join(__dirname, "data", "promos.jsonl");
+const PROMO_CODE = String(process.env.COPE_PROMO_CODE || "COPEFREE7").trim();
+const PROMO_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
@@ -18,7 +21,7 @@ function corsHeaders(res) {
   res.set({
     "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Cache-Control": "no-store"
   });
 }
@@ -64,19 +67,68 @@ function validateMessages(messages) {
 
 function validateLead(body) {
   const name = typeof body?.name === "string" ? body.name.trim() : "";
-  const email = typeof body?.email === "string" ? body.email.trim() : "";
+  const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
   const comment = typeof body?.comment === "string" ? body.comment.trim() : "";
+  const deviceId = typeof body?.deviceId === "string" ? body.deviceId.trim() : "";
 
   if (!name || name.length > 120) return null;
   if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return null;
   if (comment.length > 2000) return null;
+  if (!/^[A-Za-z0-9._:-]{16,200}$/.test(deviceId)) return null;
 
-  return { name, email, comment, submittedAt: new Date().toISOString() };
+  return { name, email, comment, deviceId, submittedAt: new Date().toISOString() };
+}
+
+function validateDeviceId(deviceId) {
+  return typeof deviceId === "string" && /^[A-Za-z0-9._:-]{16,200}$/.test(deviceId.trim());
+}
+
+async function appendJsonLine(file, value) {
+  await fs.promises.mkdir(path.dirname(file), { recursive: true });
+  await fs.promises.appendFile(file, JSON.stringify(value) + "\n", "utf8");
 }
 
 async function saveLead(lead) {
-  await fs.promises.mkdir(path.dirname(LEADS_FILE), { recursive: true });
-  await fs.promises.appendFile(LEADS_FILE, JSON.stringify(lead) + "\n", "utf8");
+  await appendJsonLine(LEADS_FILE, lead);
+}
+
+async function savePromo(promo) {
+  await appendJsonLine(PROMOS_FILE, promo);
+}
+
+async function findPromoByDevice(deviceId) {
+  try {
+    const text = await fs.promises.readFile(PROMOS_FILE, "utf8");
+    const rows = text.split("\n").filter(Boolean);
+    for (let i = rows.length - 1; i >= 0; i--) {
+      try {
+        const row = JSON.parse(rows[i]);
+        if (row.deviceId === deviceId) return row;
+      } catch (_) {}
+    }
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+  return null;
+}
+
+async function activatePromo(deviceId, email) {
+  const existing = await findPromoByDevice(deviceId);
+  if (existing && Number(existing.expiresAt) > Date.now()) {
+    return existing;
+  }
+
+  const activatedAt = Date.now();
+  const promo = {
+    deviceId,
+    email,
+    code: PROMO_CODE,
+    activatedAt,
+    expiresAt: activatedAt + PROMO_DURATION_MS,
+    createdAt: new Date(activatedAt).toISOString()
+  };
+  await savePromo(promo);
+  return promo;
 }
 
 async function callAnthropic(body) {
@@ -135,6 +187,28 @@ app.options("/api/lead", (req, res) => {
   return res.status(204).end();
 });
 
+app.options("/api/access", (req, res) => {
+  corsHeaders(res);
+  return res.status(204).end();
+});
+
+app.get("/api/access", async (req, res) => {
+  const deviceId = typeof req.query.deviceId === "string" ? req.query.deviceId.trim() : "";
+  if (!validateDeviceId(deviceId)) return send(res, 400, { error: "Invalid device identifier." });
+
+  try {
+    const promo = await findPromoByDevice(deviceId);
+    const expiresAt = promo ? Number(promo.expiresAt) : 0;
+    return send(res, 200, {
+      active: expiresAt > Date.now(),
+      expiresAt: expiresAt || null
+    });
+  } catch (error) {
+    console.error("Access check error:", error);
+    return send(res, 500, { error: "Access status could not be checked." });
+  }
+});
+
 app.post("/api/cope-ai", async (req, res) => {
   const rate = checkRateLimit(getClientIP(req));
   if (!rate.allowed) {
@@ -160,15 +234,24 @@ app.post("/api/lead", async (req, res) => {
 
   const lead = validateLead(req.body || {});
   if (!lead) {
-    return send(res, 400, { error: "Name and email are required; comment is optional and limited to 2,000 characters." });
+    return send(res, 400, { error: "Name, valid email, and a valid device identifier are required; comment is optional and limited to 2,000 characters." });
   }
 
   try {
-    await saveLead(lead);
-    return send(res, 201, { ok: true });
+    const existingPromo = await findPromoByDevice(lead.deviceId);
+    const promo = await activatePromo(lead.deviceId, lead.email);
+    if (!existingPromo) await saveLead(lead);
+
+    return send(res, 201, {
+      ok: true,
+      promoCode: promo.code,
+      activatedAt: promo.activatedAt,
+      expiresAt: promo.expiresAt,
+      durationDays: 7
+    });
   } catch (error) {
-    console.error("Lead capture error:", error);
-    return send(res, 500, { error: "Lead submission could not be saved." });
+    console.error("Lead/promo error:", error);
+    return send(res, 500, { error: "Lead submission or promo activation could not be completed." });
   }
 });
 
