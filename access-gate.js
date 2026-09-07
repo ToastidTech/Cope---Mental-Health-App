@@ -36,6 +36,8 @@
     document.querySelectorAll('.quick-card.locked').forEach(card => {
       card.classList.toggle('locked', !active);
     });
+    const talkLock = document.getElementById('talkNavLock');
+    if (talkLock) talkLock.style.display = active ? 'none' : '';
   }
 
   function notifyAccessChanged() {
@@ -56,9 +58,12 @@
     return active;
   };
 
-  // The existing app's inline feature gates call hasAccess(). Keep that API,
-  // but make it represent the user's individual seven-day entitlement.
+  // Both the normal premium gates and the Talk/CopeAI gate use the same
+  // individual seven-day entitlement during this promo.
   window.hasAccess = function () {
+    return isLocallyActive();
+  };
+  window.hasAIAccess = function () {
     return isLocallyActive();
   };
 
@@ -91,7 +96,6 @@
       syncLocks(Boolean(active));
       notifyAccessChanged();
     } catch (error) {
-      // Keep the locally cached entitlement working if the network is unavailable.
       const active = isLocallyActive();
       syncLocks(active);
       console.warn('Cope access check unavailable:', error);
