@@ -1,4 +1,4 @@
-const CACHE = 'cope-v28';
+const CACHE = 'cope-v29';
 const ASSETS = ['./','./index.html','./manifest.json','./lead-capture.js','./logo-192.png','./logo-512.png','./splash-logo.png'];
 
 const CHAT_CONTRAST = `<style id="cope-chat-contrast">
@@ -8,16 +8,22 @@ const CHAT_CONTRAST = `<style id="cope-chat-contrast">
 .bottom-nav .nav-btn[onclick*="talk"] .nav-label { color:#c7b7df !important; }
 </style>`;
 
-const TALK_FIX = `<script>
-(function(){function fixTalk(){document.querySelectorAll('.bottom-nav .nav-btn').forEach(function(btn){var text=(btn.textContent||'').trim();if(text.includes('Talk')){btn.style.setProperty('background','rgba(184,159,216,0.10)','important');btn.style.setProperty('border','1px solid rgba(184,159,216,0.32)','important');btn.style.setProperty('color','#d4bff5','important');btn.style.setProperty('appearance','none','important');btn.style.setProperty('-webkit-appearance','none','important');var icon=btn.querySelector('.nav-icon');var label=btn.querySelector('.nav-label');if(icon){icon.style.setProperty('color','#d4bff5','important');icon.style.setProperty('filter','drop-shadow(0 0 6px rgba(184,159,216,0.55))','important')}if(label)label.style.setProperty('color','#c7b7df','important')}})}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',fixTalk);else fixTalk();new MutationObserver(fixTalk).observe(document.documentElement,{childList:true,subtree:true})})();
-</script>`;
-
 const OPEN_WEEK_FIX = `<script id="cope-open-week-fix">
 (function(){
   function isOpenWeek(){var now=new Date();return now>=new Date('2026-09-06T00:00:00-05:00')&&now<new Date('2026-09-14T00:00:00-05:00');}
-  function apply(){if(!isOpenWeek())return;window.hasAccess=function(){return true;};document.querySelectorAll('.quick-card.locked').forEach(function(c){c.classList.remove('locked');});document.querySelectorAll('[onclick*="hasAccess() ? goTo("]').forEach(function(el){var m=el.getAttribute('onclick').match(/goTo\((['\"])([^'\"]+)\1\)/);if(m)el.setAttribute('onclick','goTo(\''+m[2]+'\')');});}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply);else apply();
-  new MutationObserver(apply).observe(document.documentElement,{childList:true,subtree:true});
+  function apply(){
+    if(!isOpenWeek())return;
+    window.hasAccess=function(){return true;};
+    window.openPaywall=function(){};
+    document.querySelectorAll('.quick-card.locked').forEach(function(c){c.classList.remove('locked');});
+    document.querySelectorAll('[onclick]').forEach(function(el){
+      var click=el.getAttribute('onclick')||'';
+      var m=click.match(/hasAccess\(\)\s*\?\s*goTo\((['\"])([^'\"]+)\1\)\s*:\s*openPaywall\(\)/);
+      if(m)el.setAttribute('onclick','goTo(\''+m[2]+'\')');
+    });
+  }
+  function start(){apply();setInterval(apply,250);}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
 </script>`;
 
@@ -28,10 +34,10 @@ function enhanceHtml(response) {
   return response.text().then(html=>{
     if(new Date()>=new Date('2026-09-06T00:00:00-05:00')&&new Date()<new Date('2026-09-14T00:00:00-05:00')){
       html=html.replace(/class="quick-card locked"/g,'class="quick-card"');
-      html=html.replace(/onclick="hasAccess\(\) \? goTo\((['\"])([^'\"]+)\1\) : openPaywall\(\)"/g,'onclick="goTo(\'$2\')"');
+      html=html.replace(/onclick="hasAccess\(\)\s*\?\s*goTo\((['\"])([^'\"]+)\1\)\s*:\s*openPaywall\(\)"/g,'onclick="goTo(\'$2\')"');
+      html=html.replace(/<head([^>]*)>/i,'<head$1><style id="cope-open-week-lock-css">.quick-card.locked::after{content:none!important}.quick-card.locked{opacity:1!important}</style>');
     }
     if(!html.includes('id="cope-chat-contrast"'))html=html.replace('</head',`${CHAT_CONTRAST}\n</head`);
-    if(!html.includes('function fixTalk'))html=html.replace('</body',`${TALK_FIX}\n</body`);
     if(!html.includes('cope-open-week-fix'))html=html.replace('</body',`${OPEN_WEEK_FIX}\n</body`);
     if(!html.includes('lead-capture.js'))html=html.replace('</body','  <script src="./lead-capture.js?v=3" defer></script>\n</body');
     return new Response(html,{status:response.status,statusText:response.statusText,headers:response.headers});
