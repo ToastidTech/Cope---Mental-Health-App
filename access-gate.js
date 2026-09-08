@@ -32,8 +32,24 @@
     return true;
   }
 
+  function injectTalkContrast() {
+    if (document.getElementById('cope-access-talk-contrast')) return;
+    const style = document.createElement('style');
+    style.id = 'cope-access-talk-contrast';
+    style.textContent = `
+      .bottom-nav .nav-btn[onclick*="talk"] { -webkit-appearance:none !important; appearance:none !important; background:rgba(184,159,216,.10) !important; border:1px solid rgba(184,159,216,.32) !important; color:#d4bff5 !important; box-shadow:0 0 14px rgba(184,159,216,.10) !important; }
+      .bottom-nav .nav-btn[onclick*="talk"] .nav-icon { color:#d4bff5 !important; filter:drop-shadow(0 0 6px rgba(184,159,216,.55)) !important; }
+      .bottom-nav .nav-btn[onclick*="talk"] .nav-label { color:#c7b7df !important; }
+      #screen-talk, #screen-talk .screen-content { color:#c8c8e0 !important; background:#08080f !important; }
+      #screen-talk input#chatInput { background:rgba(184,159,216,.08) !important; color:#f0eeff !important; caret-color:#d4bff5 !important; }
+      #screen-talk input#chatInput::placeholder { color:#7a6a9a !important; }
+      #screen-talk button#sendBtn { color:#d4bff5 !important; background:rgba(184,159,216,.30) !important; border-color:rgba(184,159,216,.40) !important; }
+    `;
+    (document.head || document.documentElement).appendChild(style);
+  }
+
   function syncLocks(active) {
-    document.querySelectorAll('.quick-card.locked').forEach(card => {
+    document.querySelectorAll('.quick-card').forEach(card => {
       card.classList.toggle('locked', !active);
     });
     const talkLock = document.getElementById('talkNavLock');
@@ -58,8 +74,6 @@
     return active;
   };
 
-  // Both the normal premium gates and the Talk/CopeAI gate use the same
-  // individual seven-day entitlement during this promo.
   window.hasAccess = function () {
     return isLocallyActive();
   };
@@ -103,6 +117,7 @@
   }
 
   function init() {
+    injectTalkContrast();
     syncLocks(isLocallyActive());
     refreshAccess();
     setInterval(refreshAccess, 5 * 60 * 1000);
