@@ -4,7 +4,6 @@
   const DEVICE_KEY = 'copePromoDeviceId_v1';
   const ACCESS_KEY = 'copePromoAccess_v1';
   const EXPIRES_KEY = 'copePromoExpiresAt_v1';
-  const PROMO_ISSUE_END_MS = Date.parse('2026-09-13T04:59:59.999Z');
 
   function getDeviceId() {
     let id = localStorage.getItem(DEVICE_KEY);
@@ -15,12 +14,7 @@
     return id;
   }
 
-  function isPromoWeekOpen() {
-    return Date.now() <= PROMO_ISSUE_END_MS;
-  }
-
   function isLocallyActive() {
-    if (isPromoWeekOpen()) return true;
     const active = localStorage.getItem(ACCESS_KEY) === 'true';
     const expiresAt = Number(localStorage.getItem(EXPIRES_KEY) || 0);
     return active && expiresAt > Date.now();
@@ -75,7 +69,7 @@
   window.copeHasPromoAccess = isLocallyActive;
   window.copeSetPromoAccess = function (expiresAt) {
     const active = setAccess(expiresAt);
-    syncLocks(active || isPromoWeekOpen());
+    syncLocks(active);
     notifyAccessChanged();
     return active;
   };
@@ -111,10 +105,9 @@
       });
       if (!response.ok) throw new Error('Access check failed: ' + response.status);
       const data = await response.json();
-      const storedActive = Boolean(data.active && setAccess(data.expiresAt));
-      const active = storedActive || isPromoWeekOpen();
-      if (!storedActive && !isPromoWeekOpen()) setAccess(null);
-      syncLocks(active);
+      const active = data.active && setAccess(data.expiresAt);
+      if (!active) setAccess(null);
+      syncLocks(Boolean(active));
       notifyAccessChanged();
     } catch (error) {
       const active = isLocallyActive();
