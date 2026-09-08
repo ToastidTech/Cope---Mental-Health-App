@@ -1,4 +1,4 @@
-const CACHE = 'cope-v31';
+const CACHE = 'cope-v32';
 const ASSETS = ['./','./index.html','./manifest.json','./lead-capture.js','./access-gate.js','./logo-192.png','./logo-512.png','./splash-logo.png'];
 
 const CHAT_CONTRAST = `<style id="cope-chat-contrast">
@@ -6,6 +6,10 @@ const CHAT_CONTRAST = `<style id="cope-chat-contrast">
 .bottom-nav .nav-btn[onclick*="talk"]:hover,.bottom-nav .nav-btn[onclick*="talk"]:focus,.bottom-nav .nav-btn[onclick*="talk"]:active,.bottom-nav .nav-btn[onclick*="talk"].active { background:rgba(184,159,216,0.18) !important; border-color:rgba(184,159,216,0.50) !important; color:#d4bff5 !important; }
 .bottom-nav .nav-btn[onclick*="talk"] .nav-icon { color:#d4bff5 !important; filter:drop-shadow(0 0 6px rgba(184,159,216,0.55)) !important; }
 .bottom-nav .nav-btn[onclick*="talk"] .nav-label { color:#c7b7df !important; }
+#screen-talk, #screen-talk .screen-content { color:#c8c8e0 !important; background:#08080f !important; }
+#screen-talk input#chatInput { background:rgba(184,159,216,0.08) !important; color:#f0eeff !important; caret-color:#d4bff5 !important; }
+#screen-talk input#chatInput::placeholder { color:#7a6a9a !important; }
+#screen-talk button#sendBtn { color:#d4bff5 !important; background:rgba(184,159,216,0.30) !important; border-color:rgba(184,159,216,0.40) !important; }
 </style>`;
 
 function enhanceHtml(response) {
@@ -17,7 +21,7 @@ function enhanceHtml(response) {
     html=html.replace(/<style id="cope-open-week-lock-css">[\s\S]*?<\/style>/g,'');
     html=html.replace(/<script[^>]+src=["'][^"']*labor-day-promo\.js[^"']*["'][^>]*><\/script>/gi,'');
     if(!html.includes('id="cope-chat-contrast"'))html=html.replace('</head',`${CHAT_CONTRAST}\n</head`);
-    if(!html.includes('access-gate.js'))html=html.replace('</body','  <script src="./access-gate.js?v=1" defer></script>\n</body');
+    if(!html.includes('access-gate.js'))html=html.replace('</body','  <script src="./access-gate.js?v=2" defer></script>\n</body');
     if(!html.includes('lead-capture.js'))html=html.replace('</body','  <script src="./lead-capture.js?v=5" defer></script>\n</body');
     return new Response(html,{status:response.status,statusText:response.statusText,headers:response.headers});
   });
