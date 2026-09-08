@@ -1,4 +1,4 @@
-const CACHE = 'cope-v33';
+const CACHE = 'cope-v32';
 const ASSETS = ['./','./index.html','./manifest.json','./lead-capture.js','./access-gate.js','./logo-192.png','./logo-512.png','./splash-logo.png'];
 
 const CHAT_CONTRAST = `<style id="cope-chat-contrast">
@@ -21,9 +21,8 @@ function enhanceHtml(response) {
     html=html.replace(/<style id="cope-open-week-lock-css">[\s\S]*?<\/style>/g,'');
     html=html.replace(/<script[^>]+src=["'][^"']*labor-day-promo\.js[^"']*["'][^>]*><\/script>/gi,'');
     if(!html.includes('id="cope-chat-contrast"'))html=html.replace('</head',`${CHAT_CONTRAST}\n</head`);
-    html=html.replace(/<script[^>]+src=["'][^"']*access-gate\.js[^"']*["'][^>]*><\/script>/gi,'');
-    html=html.replace(/<script[^>]+src=["'][^"']*lead-capture\.js[^"']*["'][^>]*><\/script>/gi,'');
-    html=html.replace('</body','  <script src="./access-gate.js?v=3" defer></script>\n  <script src="./lead-capture.js?v=5" defer></script>\n</body');
+    if(!html.includes('access-gate.js'))html=html.replace('</body','  <script src="./access-gate.js?v=2" defer></script>\n</body');
+    if(!html.includes('lead-capture.js'))html=html.replace('</body','  <script src="./lead-capture.js?v=5" defer></script>\n</body');
     return new Response(html,{status:response.status,statusText:response.statusText,headers:response.headers});
   });
 }
