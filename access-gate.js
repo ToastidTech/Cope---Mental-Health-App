@@ -66,7 +66,10 @@
       talkButton.style.setProperty('appearance', 'none', 'important');
       const icon = talkButton.querySelector('.nav-icon');
       const label = talkButton.querySelector('.nav-label');
-      if (icon) icon.style.setProperty('color', '#d4bff5', 'important');
+      if (icon) {
+        icon.textContent = '💬';
+        icon.style.setProperty('color', '#d4bff5', 'important');
+      }
       if (label) label.style.setProperty('color', '#d4bff5', 'important');
     }
   }
