@@ -65,7 +65,7 @@
       cursor: pointer; padding: 8px 12px; border-radius: 12px;
       transition: all 0.2s; border: none; background: none;
     }
-    .nav-btn .nav-icon { font-size: 1.2rem; }
+    .nav-btn .nav-icon { font-size: 1.2rem; color: var(--lavender); }
     .nav-btn .nav-label {
       font-size: 0.58rem; letter-spacing: 1px; color: var(--dim);
       text-transform: uppercase; font-family: 'DM Sans', sans-serif;
@@ -868,7 +868,7 @@
       <span class="nav-icon">🎧</span><span class="nav-label">ASMR</span>
     </button>
     <button class="nav-btn" onclick="hasAIAccess() ? goTo('talk') : openPaywall()">
-      <span class="nav-icon" id="talkNavIcon">✦</span><span class="nav-label">Talk</span>
+      <span class="nav-icon" id="talkNavIcon">💬</span><span class="nav-label">Talk</span>
       <span id="talkNavLock" style="position:absolute;top:2px;right:2px;font-size:0.7rem;display:none">🔒</span>
     </button>
     <button class="nav-btn" onclick="goTo('crisis')">
@@ -985,7 +985,7 @@ function updateAILockUI() {
     document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
     document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
     document.getElementById('screen-' + id).classList.add('active');
-    var navMap = { home:0, breathing:1, journal:2, asmr:3, crisis:4 };
+    var navMap = { home:0, breathing:1, journal:2, asmr:3, talk:4, crisis:5 };
     var navBtns = document.querySelectorAll('.nav-btn');
     if (navMap[id] !== undefined) navBtns[navMap[id]].classList.add('active');
     currentScreen = id;
